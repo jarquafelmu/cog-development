@@ -3,6 +3,7 @@ from redbot.core.utils.chat_formatting import error, info, warning
 from redbot.core.utils.predicates import MessagePredicate
 from redbot.core.utils.embed import randomize_color
 from .logger import logger
+from enum import Enum
 
 import discord
 
@@ -10,7 +11,16 @@ class Karma(commands.Cog):
     """
     Handles functions regarding karma
     """
-    thumbs_up_emoji = "\N{Thumbs Up Sign}"
+    class Endorsements(Enum):
+        MEMBER = {
+            "emoji": "\N{Thumbs Up Sign}",
+            "value": 1
+        }
+        STAFF = {
+            "emoji": "\N{Exploding Star}",
+            "value": 5
+        }
+
     properties = {
         "channels": None,
         "logic": None,
@@ -33,6 +43,7 @@ class Karma(commands.Cog):
         self.guild_id = args["guild_id"]
         self.properties["channels"] = args["channels"]
         self.properties["logic"] = args["logic"]
+        endorsements_values = set(item.value["emoji"] for item in self.Endorsements)     
     
         self.db = Config.get_conf(self, identifier=1742113358, force_registration=True)
         
@@ -48,6 +59,12 @@ class Karma(commands.Cog):
         }
 
         self.db.register_member(**default_member)
+
+        
+    def getEndorsement(self, emoji: str) -> dict:
+        # gets the first item rom fthe Endorsements enum which contains an emoji 
+        # that matches the passed in one
+        return next((x.value for x in self.Endorsements if x.value.emoji == emoji), None)
 
     @commands.group(name="karma", aliases=["k", "Karma"])
     async def _karma(self, ctx):
@@ -171,10 +188,9 @@ class Karma(commands.Cog):
                                     "this user is not a valid member."
                             ))
                         continue
-
                     payload["recipient"] = message.author                        
                     for react in message.reactions:
-                        if (str(react.emoji) != self.thumbs_up_emoji):
+                        if (str(react.emoji) not in self.endorsements_values):
                             continue
 
                         logger.debug("Found endorsement")
@@ -273,15 +289,17 @@ class Karma(commands.Cog):
         if isinstance(payload, dict):
             member_receiving = payload["recipient"]
             member_giving = payload["sender"]
+            emoji = str(payload["emoji"])
         else:
             # get the member from the guild using the user_id in the payload
             member_giving = self.bot.get_guild(self.guild_id).get_member(payload.user_id)
             channel = self.bot.get_guild(self.guild_id).get_channel(payload.channel_id)
             message = await channel.get_message(payload.message_id)
-            member_receiving = message.author        
+            member_receiving = message.author
+            emoji = str(payload.emoji)
 
-            if str(payload.emoji) != self.thumbs_up_emoji:
-                return
+        if emoji not in self.endorsements_values:
+            return
 
         if member_giving.id == member_receiving.id:
             return logger.debug("member cannot give themselves karma.")
@@ -289,7 +307,11 @@ class Karma(commands.Cog):
         if member_receiving.bot:
             return logger.debug("bot may not receive karma.")
 
-        modifier = self.properties["karma_per_vote"] * 1 if is_add_action else -1
+        endorsement = self.getEndorsement(emoji)
+        if endorsement is None:
+            return logger.error(f"Endorsement {emoji} not recognized.")
+
+        modifier = endorsement["value"] * 1 if is_add_action else -1
 
         await self.modify_karma(member_giving, member_receiving, modifier)
         

@@ -55,7 +55,7 @@ class OSChannels(commands.Cog):
     @property
     def welcome(self):
         """
-        Server Guidelines channel object
+        Welcome channel object
         """
         if self.__channel_welcome is None:
             self.__channel_welcome = self.bot.get_channel(self.__channel_ids["welcome"])

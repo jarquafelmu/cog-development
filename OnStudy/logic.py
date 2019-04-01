@@ -6,9 +6,6 @@ import discord
 class Logic(commands.Bot):
 
     def __init__(self, bot):
-        """
-        Initialize the CourseAssignment object
-        """
         self.bot = bot    
 
     async def confirm(self, ctx, *, msg="Are you sure?"):
