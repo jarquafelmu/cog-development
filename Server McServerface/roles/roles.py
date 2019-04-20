@@ -1,6 +1,5 @@
 from redbot.core import commands
 from redbot.core.utils.chat_formatting import warning
-from .channels import Channels, ChannelIds
 
 import discord
 import contextlib
@@ -16,12 +15,9 @@ class RoleManager(commands.Cog):
     
     log_id = 509041710651670548
     
-    def __init__(self, bot, args):
+    def __init__(self, bot):
         self.bot = bot
-        self.channels = args["channels"]
-        self.logic = args["logic"]
-        self.guild_id = args["guild_id"]
-        self.log = self.channels.log
+        self.log = self.bot.get_channel(self.log_id)
         
         self.roles = {
             "reader": {

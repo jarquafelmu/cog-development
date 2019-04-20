@@ -18,5 +18,3 @@ async def setup(bot):
     # Greet cog stuff
     cog = Greet(bot, args)
     bot.add_cog(cog)
-    
-    await cog.is_loaded()

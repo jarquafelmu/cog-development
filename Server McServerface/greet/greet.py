@@ -8,13 +8,42 @@ class Greet(commands.Cog):
  
     guild_id = 493875452046475275
     
-    def __init__(self, bot, args):
+    def __init__(self, bot):
         self.bot = bot
-        self.channels = args["channels"]
-        self.logic = args["logic"]
-        self.guild_id = args["guild_id"]
+        self.channels = self.Channels(bot)   
 
+    class Channels:
+        """Collection of channels and their ids on the server"""
+        
+        def __init__(self, bot):
+            self.bot = bot
+            
+        new_member_id = 493875452046475279
+        rules_id = 494211779950411777
+        server_orientation_id = 508391802940817415
+        u18_id = 494210029294059520
+        incident_id = 494210087217266688
+        welcome_id = 513855964294938624
 
+        @property
+        def newMembers(self):
+            """New Members channel object"""
+            return self.bot.get_channel(self.new_member_id)
+        
+        @property
+        def rules(self):
+            """Server Rules channel object"""
+            return self.bot.get_channel(self.rules_id)
+        
+        @property
+        def welcome(self):
+            """Server Rules channel object"""
+            return self.bot.get_channel(self.welcome_id)
+
+        def anchor(self, channel):
+            """Formats the channel for embedding in a string"""
+            return f"<#{channel}>"
+        
     @commands.command()
     @checks.mod()
     async def greet(self, ctx, user: discord.Member = None):

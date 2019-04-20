@@ -1,6 +1,8 @@
 from redbot.core import commands
 from enum import Enum
 
+import discord
+
 class ChannelIds(Enum):        
     RULES = 494211779950411777
     LOG = 509041710651670548
@@ -38,7 +40,7 @@ class Channels(commands.Cog):
         """
         Greetings channel object
         """
-        return self.bot.get_channel(493875452046475279)
+        return self.bot.get_channel(ChannelIds.GREETINGS)
 
     @property
     def welcome(self):
