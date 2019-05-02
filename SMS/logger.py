@@ -2,7 +2,7 @@ import logging
 
 # create log with 'spam_application'
 logger = logging.getLogger("ServerMcServerface")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # create formatter and add it to the handlers
 formatter = logging.Formatter(
@@ -12,7 +12,7 @@ formatter = logging.Formatter(
 
 # create console handler
 consoleHandler = logging.StreamHandler()
-consoleHandler.setLevel(logging.DEBUG)
+consoleHandler.setLevel(logging.INFO)
 consoleHandler.setFormatter(formatter)
 
 # allows to add only one instance of file handler and stream handler
