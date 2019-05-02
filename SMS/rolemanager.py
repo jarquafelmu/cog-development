@@ -68,7 +68,7 @@ class RoleManager(commands.Cog):
             logger.debug("stored role")
         
         logger.debug("registered role")
-        self.log.send("Registered.")
+        await ctx.send("Registered.")
 
     @_roles_settings.command(name="view", aliases=["v"])
     async def _roles_settings_view(self, ctx):
