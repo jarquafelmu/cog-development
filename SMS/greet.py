@@ -1,13 +1,12 @@
 from redbot.core import commands, checks
 from redbot.core.utils.chat_formatting import humanize_list
+from .logger import logger
 
 import discord
 
 class Greet(commands.Cog):
     """My custom cog"""
- 
-    guild_id = 493875452046475275
-    
+     
     def __init__(self, bot, args):
         self.bot = bot
         self.channels = args["channels"]
