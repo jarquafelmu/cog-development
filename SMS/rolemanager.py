@@ -95,12 +95,19 @@ class RoleManager(commands.Cog):
     async def _roles_settings_remove(self, ctx, key: str = None):
         """
         Removes a registered role
-        """
+        """        
+        pred = await self.logic.confirm(ctx, msg=(
+            "Are you sure you wish to remove this role?"
+        ))
+
+        if pred is False:
+            return await ctx.send("Standing down.")
+
         try:
             async with self.db.guild(self.bot.get_guild(self.guild_id)).registered_roles() as roles:
                 roles.pop(key)
         except KeyError:
-            msg = f"key {key} does not exist."
+            msg = f"Key: `{key}`` does not exist."
             await self.log.send(warning(msg))
             logger.warning(msg)
         else:
