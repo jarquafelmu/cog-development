@@ -1,7 +1,7 @@
 from redbot.core import commands
 from redbot.core.utils.chat_formatting import error
+from .logger import logger
 
-import logger
 import discord
 
 class MessageHandler(commands.Cog):
