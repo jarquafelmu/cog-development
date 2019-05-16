@@ -30,36 +30,28 @@ class OSChannels(commands.Cog):
         """
         Course List channel object
         """
-        if self.__channel_courseList is None:
-            self.__channel_courseList = self.bot.get_channel(self.__channel_ids["courseList"])
-        return self.__channel_courseList
+        return self.bot.get_channel(self.__channel_ids["courseList"])
 
     @property
     def log(self):
         """
         Logging channel object
         """
-        if self.__channel_log is None:
-            self.__channel_log = self.bot.get_channel(self.__channel_ids["log"])
-        return self.__channel_log
+        return self.bot.get_channel(self.__channel_ids["log"])
 
     @property
     def newMembers(self):
         """
         New Members channel object
         """
-        if self.__channel_newMembers is None:
-            self.__channel_newMembers = self.bot.get_channel(self.__channel_ids["newMembers"])
-        return self.__channel_newMembers
+        return self.bot.get_channel(self.__channel_ids["newMembers"])
 
     @property
     def welcome(self):
         """
         Welcome channel object
         """
-        if self.__channel_welcome is None:
-            self.__channel_welcome = self.bot.get_channel(self.__channel_ids["welcome"])
-        return self.__channel_welcome
+        return self.bot.get_channel(self.__channel_ids["welcome"])
 
     def anchor(self, channel):
         """
