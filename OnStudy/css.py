@@ -56,7 +56,7 @@ class CSS(commands.Cog):
         # `recentlyJoinedMembers` exit as soon as there is message from the bot found
         async for message in self.properties["channels"].newMembers.history(limit=messageLimit):
             if not message.author.bot:
-                if message.author.properties["guild"] == self.bot.get_guild(self.guild_id) and message.type == discord.MessageType.new_member:
+                if message.author.guild == self.bot.get_guild(self.guild_id) and message.type == discord.MessageType.new_member:
                     recentlyJoinedMembers.append(message)
             else:
                 break
