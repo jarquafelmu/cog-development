@@ -2,6 +2,7 @@ from redbot.core import commands, Config, checks
 from redbot.core.utils.chat_formatting import error
 from redbot.core.utils.predicates import MessagePredicate
 from .logger import logger
+from typing import Union
 
 import discord
 import re
@@ -61,26 +62,25 @@ class Courses(commands.Cog):
 
     @_courses.command(name="create", aliases=["add"])
     @checks.admin()
-    async def _courses_create(self, ctx,
-                              role: str, *, sections_num: int = 0):
+    async def _courses_create(self, ctx, *, courses):
         """
         Creates a category based on the course name supplied.
 
         If the role for the course doesn't exist it will
         query to user if it should be created as well.
         """
-        if role == "":
-            return await ctx.send(error("Role cannot be blank"))
+        if courses is None:
+            return
 
-        role = role.lower()
+        courses_list = courses.split(" ")
+        for course in courses_list:
+            course = course.lower()
 
-        sections_num = max(sections_num, 0)
+            # regisiter the course with the database
+            await self._courses_register(ctx, course)
 
-        # regisiter the course with the database
-        await self._courses_register(ctx, role, sort=True)
-
-        await ctx.channel.send("Done.")
-        
+        await ctx.invoke(self._courses_sort)
+        await ctx.channel.send("Done.")        
 
     async def _course_create_channel(self, ctx, course_role, *, sections_num: int = 0):
         """
@@ -127,6 +127,8 @@ class Courses(commands.Cog):
         section_number **required**: The section number of the course.
         topic: if supplied, will set the topic of the channel to this
         """
+        # TODO: Add gate logic to check if we are inside a course. if not quit.
+        
         if not section_number:
             return
 
@@ -222,6 +224,7 @@ class Courses(commands.Cog):
                 course_role_found = guild_role
                 break
         return course_role_found
+        
 
     async def _courses_register_from_course_listing(self, ctx, message: discord.Message, create_interaction: bool = False):
         """
@@ -229,7 +232,8 @@ class Courses(commands.Cog):
         """
         await self._courses_register(ctx, message.content, create_interaction=create_interaction, message_id=message.id)
 
-    async def _courses_register(self, ctx, role_name: str, *, sections_num: int = 0, create_interaction: bool = True, message_id: int = 0, sort: bool = False):
+
+    async def _courses_register(self, ctx, role_name: str, *, create_interaction: bool = True, message_id: int = 0):
         """
         Registers a course.
         msg_id: the id of the message which will trigger the course to be applied.
@@ -265,8 +269,6 @@ class Courses(commands.Cog):
                 str(message_id): course_record
             })
 
-        if sort:
-            await ctx.invoke(self._courses_sort)
 
         
 
