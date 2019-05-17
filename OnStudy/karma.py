@@ -16,10 +16,6 @@ class Karma(commands.Cog):
             "emoji": "\N{Thumbs Up Sign}",
             "value": 1
         }
-        STAFF = {
-            "emoji": "\N{Exploding Star}",
-            "value": 5
-        }
 
     properties = {
         "channels": None,
