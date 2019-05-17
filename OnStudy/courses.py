@@ -82,7 +82,7 @@ class Courses(commands.Cog):
         await ctx.invoke(self._courses_sort)
         await ctx.channel.send("Done.")        
 
-    async def _course_create_channel(self, ctx, course_role, *, sections_num: int = 0):
+    async def _course_create_channel(self, ctx, course_role):
         """
         Creates a course channel group if it doesn't already exists
         """
@@ -104,16 +104,13 @@ class Courses(commands.Cog):
         course_category = await self.bot.get_guild(self.guild_id).create_category(name=f"{course_role.name.upper()}", overwrites=overwrites)
         # create the general chat for the course
         await self.bot.get_guild(self.guild_id).create_text_channel(name=course_role.name, category=course_category)
-        # create any requested section channels
-        for i in range(1, sections_num):
-            await self.bot.get_guild(self.guild_id).create_text_channel(name=f"section-00{i}", category=course_category)
+
         # create the voice channels
         voice_channel_name = re.sub(
             r"^[A-Za-z]+(?P<courseNum>[\d]+)$",
             r"\g<courseNum>",
             course_role.name
         )
-
         await self.bot.get_guild(self.guild_id).create_voice_channel(name=f"{voice_channel_name}-gen", category=course_category)
         await self.bot.get_guild(self.guild_id).create_voice_channel(name=f"{voice_channel_name}-school", category=course_category)
 
@@ -136,8 +133,6 @@ class Courses(commands.Cog):
             return await ctx.send(error("This command must be done inside a course's main text channnel."))
 
         parent_course = self.bot.get_guild(self.guild_id).get_channel(ctx.channel.category_id)
-
-
         channel = await self.bot.get_guild(self.guild_id).create_text_channel(name=f"section-{section_number}", category=parent_course)
 
         if topic:
@@ -253,7 +248,7 @@ class Courses(commands.Cog):
             if new_role is not None:
                 course_role = new_role
 
-        course_channel = await self._course_create_channel(ctx, course_role, sections_num=sections_num)
+        course_channel = await self._course_create_channel(ctx, course_role)
 
         if create_interaction:
             # create the message that users will react to
