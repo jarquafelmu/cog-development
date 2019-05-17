@@ -127,12 +127,17 @@ class Courses(commands.Cog):
         section_number **required**: The section number of the course.
         topic: if supplied, will set the topic of the channel to this
         """
-        # TODO: Add gate logic to check if we are inside a course. if not quit.
-        
+
         if not section_number:
             return
 
+        if not self.logic.validate_course(ctx.channel):
+            logger.debug("Not inside a valid course")
+            return await ctx.send(error("This command must be done inside a course's main text channnel."))
+
         parent_course = self.bot.get_guild(self.guild_id).get_channel(ctx.channel.category_id)
+
+
         channel = await self.bot.get_guild(self.guild_id).create_text_channel(name=f"section-{section_number}", category=parent_course)
 
         if topic:
