@@ -74,7 +74,7 @@ class CSS(commands.Cog):
         await self.welcome(self.properties["channels"].newMembers, members)
         
 
-    async def prodMember(self, ctx, member: discord.Member = None):
+    async def prodMember(self, ctx, member: discord.Member = None, msg: str = None):
         """
         DM's the user asking them to tell the server what courses they have
         """
@@ -93,13 +93,7 @@ class CSS(commands.Cog):
 
         with contextlib.suppress(discord.HTTPException):
             # we don't want blocked DMs preventing us from prodding
-            await member.send(
-                f"Hi {member.display_name}.\n"
-                f"You have been on the **{member.guild.name}** discord server for a bit but haven't signed up for any courses.\n\n"
-                "In order to get the most use out of the server you will need to do that so that you can see the groups for your courses.\n\n"
-                "Don't reply to this message as this is just a bot.\n"
-                f"Instead visit server and grab your courses in the **#{self.properties['channels'].courseList.name}** channel. Hope to see you soon."
-            )
+            await member.send(msg)
 
         await self.db.member(member).last_prodded.set(now.timestamp())
         logger.debug("prodded member")
@@ -157,17 +151,24 @@ class CSS(commands.Cog):
         if user is None:
             return
 
-        # single user
-        result = await self.prodMember(ctx, user)
-        if result:
-            msg = "Prodded member."    
-        else:
-            msg = (
-                "Prodding was unsuccessful\n"
-                "Either the member was recently prodded or the supplied member was invalid."
-            )
+        msg = self.build_prod_msg (
+                ctx.author.display_name, ctx.guild.name
+        )            
+        confirmed = await self.verify_prod_msg(ctx, msg)
+        if confirmed:
+            # single user
+            result = await self.prodMember(ctx, user, msg)
+            if result:
+                msg = "Prodded member."    
+            else:
+                msg = (
+                    "Prodding was unsuccessful\n"
+                    "Either the member was recently prodded or the supplied member was invalid."
+                )
             
-        await ctx.channel.send(msg)
+            await ctx.channel.send(msg)
+        else:
+            await ctx.send("Canceling.")
 
     @commands.command()
     @checks.admin()
@@ -188,17 +189,38 @@ class CSS(commands.Cog):
                 return await ctx.send("All members are have courses.")
 
             await ctx.send(f"Prodding {size} member{'s' if size != 1 else ''}.")
+            msg = self.build_prod_msg (
+                    ctx.author.display_name, ctx.guild.name
+            )            
+            confirmed = await self.verify_prod_msg(ctx, msg)
+            if confirmed:
+                async with log.typing():
+                    for member in membersWithoutRoles:
+                        await self.prodMember(ctx, member, self.build_prod_msg (
+                            member.display_name, member.guild.name)
+                        )
 
-            async with log.typing():
-                for member in membersWithoutRoles:
-                    await self.prodMember(ctx, member)
-
-            # announce that the bot is done prodding members
-            await log.send(f"\n\nCompleted prodding necessary members.")
-
-            await ctx.send(f"Finished.")
+                # announce that the bot is done prodding members
+                await log.send(f"\n\nCompleted prodding necessary members.")
+                await ctx.send(f"Finished.")
+            else:
+                await ctx.send("Canceling.")
         else:
             return await ctx.send("Standing down.")
+
+    def build_prod_msg(self, member_name, guild_name):        
+       return (
+            f"Hi {member_name}.\n"
+            f"You have been on the **{guild_name}** discord server for a bit but haven't signed up for any courses.\n\n"
+            "In order to get the most use out of the server you will need to do that so that you can see the groups for your courses.\n\n"
+            "Don't reply to this message as this is just a bot.\n"
+            f"Instead visit server and grab your courses in the **#{self.properties['channels'].courseList.name}** channel. Hope to see you soon."
+        )
+
+    async def verify_prod_msg(self, ctx, msg):
+        await ctx.send(msg)
+        return await self.properties["logic"].confirm(ctx, msg="Is this message correct?")
+
         
 
     # custom events
