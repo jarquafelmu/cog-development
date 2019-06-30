@@ -1,5 +1,5 @@
 from redbot.core import commands, Config, checks
-from redbot.core.utils.chat_formatting import error
+from redbot.core.utils.chat_formatting import error, warning, info
 from redbot.core.utils.predicates import MessagePredicate
 from .logger import logger
 from typing import Union
@@ -80,7 +80,91 @@ class Courses(commands.Cog):
             await self._courses_register(ctx, course)
 
         await ctx.invoke(self._courses_sort)
-        await ctx.channel.send("Done.")        
+        await ctx.channel.send("Done.")
+
+    @_courses.command(name="modify", aliases=["mod"])
+    async def _courses_modify(self, ctx, course_to_modify: Union[int, str], new_course_name: str):
+        """
+        Allows for the modification of a course's name across all aspects.
+        
+        'courses_to_modify' can be the name of a course or the id of the course 
+        (the id is the same as the message_id from its entry on the #course_list channel)
+        """
+        if not course_to_modify:
+            return await ctx.send(error("You must supply a course to modify."))
+        if not new_course_name:
+            return await ctx.send(error("You must supply the modified course name."))
+
+        courses = await self.db.guild(ctx.guild).get_raw("registered_courses")
+        e_course = None
+        msg_id = None
+
+        if isinstance(course_to_modify, int):
+            e_course = courses[str(course_to_modify)]
+            msg_id = course_to_modify
+        elif isinstance(course_to_modify, str):
+            async with ctx.channel.typing():
+                for key, course in courses.items():
+                    await ctx.send(f"{course_to_modify} == {course['course_name']}: {course['course_name'] == course_to_modify}")
+                    if course["course_name"] == course_to_modify:
+                        e_course = course
+                        msg_id = key
+                        break
+
+        if not e_course:
+            msg = f"No course found to match the search criteria '{course_to_modify}'"
+            await ctx.send(warning(msg))
+            return logger.debug(msg)
+
+
+        # get the courses from the database
+        try:
+            e_course = await self._course_to_update(ctx, msg_id, e_course, new_course_name)
+            await self.db.guild(ctx.guild).set_raw("registered_courses", value=courses)
+        except AssertionError as AE_error:
+            logger.exception(AE_error)
+            await ctx.send(error(AE_error))
+
+                   
+
+    async def _course_to_update(self, ctx, msg_id: int, course: dict, new_course_name: str) -> dict:
+        """
+        Updates all the aspects of the given course
+        """
+        assert(course), "Course is empty."
+        assert(new_course_name), "must provide a name to update the course with."
+
+        # update the course name
+        try:
+            course["course_name"] = new_course_name
+
+            # update course name in course_list
+            msgObj = await self.course_list.get_message(msg_id)
+            if msgObj:
+                await msgObj.edit(content=new_course_name)
+                await ctx.send(info("updated message"))
+
+            # TODO: update course name for the channel
+            await self.channels.update_channel_category_group(ctx, course["category_id"], new_course_name)
+            await ctx.send(info("updated channel"))
+
+            # TODO: update course name for the role
+            await self.roles.update_role_name(ctx, course["role_id"], new_course_name)
+            await ctx.send(info("updated role"))
+        except AssertionError as AE_error:
+            logger.exception(AE_error)
+            await ctx.send(error(AE_error))
+        except discord.DiscordException as DE_error: 
+            # catch all for all discord exceptions
+            logger.exception(DE_error)
+            await ctx.send(error(DE_error))
+        else:            
+            await ctx.send("Task complete.")
+        finally:
+            await ctx.send("Done")
+        
+        return course
+
 
     async def _course_create_channel(self, ctx, course_role):
         """
@@ -151,12 +235,12 @@ class Courses(commands.Cog):
                 return message.id
 
         # create the course role message
-        message = await self.course_list.send(f"{course_role.name}")
-        await self.add_reaction_to_message(ctx, message, self.emoji)
+        message_obj = await self.course_list.send(f"{course_role.name}")
+        await self.add_reaction_to_message(ctx, message_obj, self.emoji)
 
         logger.info(f"Created course list entry for {course_role.name}")
 
-        return message.id
+        return message_obj
 
     @_courses.command(name="delete", aliases=["del"])
     async def _courses_delete(self, ctx, msg_id: int):
@@ -230,10 +314,10 @@ class Courses(commands.Cog):
         """
         Registers a course from a course listing in the course_list channel.
         """
-        await self._courses_register(ctx, message.content, create_interaction=create_interaction, message_id=message.id)
+        await self._courses_register(ctx, message.content, create_interaction=create_interaction)
 
 
-    async def _courses_register(self, ctx, role_name: str, *, create_interaction: bool = True, message_id: int = 0):
+    async def _courses_register(self, ctx, role_name: str, *, create_interaction: bool = True):
         """
         Registers a course.
         msg_id: the id of the message which will trigger the course to be applied.
@@ -252,12 +336,13 @@ class Courses(commands.Cog):
 
         if create_interaction:
             # create the message that users will react to
-            message_id = await self._courses_create_course_list_entry(
+            message_obj = await self._courses_create_course_list_entry(
                 ctx, course_role
             )
 
-        if message_id == 0:
-            return logger.error("Invalid message id")
+        if not message_obj:
+            await ctx.send(error("There was an problem with creating the reaction message in #courses_list"))
+            return logger.error("There was an problem with creating the reaction message in #courses_list")
 
         course_record = self._courses_create_record(
             course_role,
@@ -266,7 +351,7 @@ class Courses(commands.Cog):
 
         async with self.db.guild(ctx.guild).registered_courses() as courses:
             courses.update({
-                str(message_id): course_record
+                str(message_obj.id): course_record
             })
 
 
@@ -439,7 +524,7 @@ class Courses(commands.Cog):
                 roles_to_add.append(new_role)
 
                 # create channel group
-                self._courses_create(ctx, new_role.name)
+                self._courses_create(ctx, courses=new_role.name)
 
         if roles_to_add:
             await user.add_roles(*roles_to_add, reason=f"{ctx.message.author} requested it.")
@@ -482,17 +567,17 @@ class Courses(commands.Cog):
         """
         Member agrees to the rules.
         """
-        await self.process_course_assignment_from_trigger(payload, add=True)
+        await self.process_course_assignment_from_trigger(payload, add_course=True)
         
 
     async def on_raw_reaction_remove(self, payload):
         """
         Member no longer agrees to the rules.
         """
-        await self.process_course_assignment_from_trigger(payload, add=False)
+        await self.process_course_assignment_from_trigger(payload, add_course=False)
         
 
-    async def process_course_assignment(self, member: discord.Member, emoji, message_id: int, add: bool):
+    async def process_course_assignment(self, member: discord.Member, emoji, message_id: int, add_course: bool):
         """
         Handles building the required products to register a student with a course
         """
@@ -525,7 +610,7 @@ class Courses(commands.Cog):
         role = self.bot.get_guild(self.guild_id).get_role(course["role_id"])
         
         # update the status of the role for the member
-        await self.roles.update_member(member, role, add)
+        await self.roles.update_member(member, role, add_course)
         
 
     async def process_course_assignment_from_call(self, reaction: discord.Reaction, member: discord.Member):
@@ -535,7 +620,7 @@ class Courses(commands.Cog):
         await self.process_course_assignment(member, reaction.emoji, reaction.message.id, True)
         
 
-    async def process_course_assignment_from_trigger(self, payload, *, add: bool):
+    async def process_course_assignment_from_trigger(self, payload, *, add_course: bool):
         """
         Handles the processing of the reaction from a trigger.
         """
@@ -548,5 +633,5 @@ class Courses(commands.Cog):
             )
             logger.error(error_msg)            
             return await self.channels.log.send(error(error_msg))
-        await self.process_course_assignment(member, payload.emoji, payload.message_id, add)
+        await self.process_course_assignment(member, payload.emoji, payload.message_id, add_course)
         

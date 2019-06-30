@@ -83,4 +83,12 @@ class RoleHandler(commands.Cog):
         )
         logger.debug(debug_msg)
         await self.channels.log.send(debug_msg)
-        
+
+    async def update_role_name(self, ctx, role_id: int, new_name: str):
+        """
+        Updates the name of the role
+        """
+        assert (role_id), "role_id is not supplied"
+        assert (new_name), "new_name is not supplied"
+
+        await ctx.guild.get_role(role_id).edit(name=new_name)

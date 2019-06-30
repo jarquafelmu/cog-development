@@ -1,4 +1,8 @@
 from redbot.core import commands
+from redbot.core.utils.chat_formatting import warning
+
+import discord
+import re
 
 
 class OSChannels(commands.Cog):
@@ -58,3 +62,21 @@ class OSChannels(commands.Cog):
         Formats the channel for embedding in a string
         """
         return f"<#{channel}>"
+
+    async def update_channel_category_group(self, ctx, channel_id: int, new_name: str):
+        """
+        Updates the name of the channel
+        """
+        assert (channel_id), "channel_id is not supplied"
+        assert (new_name), "new_name is not supplied"
+
+        # update category name
+        category_group = ctx.guild.get_channel(channel_id)
+        old_name = category_group.name
+        await category_group.edit(name=new_name.upper())
+        pattern = re.compile(f"^{old_name}", re.IGNORECASE)
+
+        # go through 
+        for channel in category_group.channels:
+            new_channel_name = pattern.sub(new_name, channel.name)
+            await channel.edit(name=new_channel_name)
