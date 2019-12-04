@@ -114,13 +114,15 @@ class RoleManager(commands.Cog):
             await ctx.send("Role deregistered.")
             logger.debug("role removed as requested.")
     
-    async def on_raw_reaction_add(self, payload):        
+    @commands.Cog.listener("on_raw_reaction_add")
+    async def reaction_added(self, payload):        
         """
         Member agrees to the rules
         """        
         await self.process_reaction(payload, True)
                 
-    async def on_raw_reaction_remove(self, payload):        
+    @commands.Cog.listener("on_raw_reaction_remove")
+    async def reaction_removed(self, payload):        
         """
         Member no longer agrees to the rules
         """        
