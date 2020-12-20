@@ -1,6 +1,8 @@
 from redbot.core import commands, Config
 from redbot.core.utils.chat_formatting import warning
 from redbot.core.utils.predicates import MessagePredicate
+import emoji
+from .logger import logger
 
 import discord
 import contextlib
@@ -12,7 +14,8 @@ import contextlib
 class RoleManager(commands.Cog):
     """Manages roles for Server McServerface"""
 
-    guild_id = 493875452046475275
+    # guild_id = 493101259012702208  # Bot Dev
+    guild_id = 493875452046475275  # The Nool
 
     msg_rule_agreement_id = 508393348067885066
     msg_author_id = 513857600152928279
@@ -22,6 +25,7 @@ class RoleManager(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.log = self.bot.get_channel(self.log_id)
+        logger.debug("Test debug message.")
 
         self.db = Config.get_conf(
             self, identifier=1712118358, force_registration=True)
@@ -43,18 +47,19 @@ class RoleManager(commands.Cog):
             }
         }
 
-        self.roles["member"]["obj"] = self.bot.get_guild(
-            self.guild_id).get_role(self.roles["member"]["id"])
-        self.roles["reader"]["obj"] = self.bot.get_guild(
-            self.guild_id).get_role(self.roles["reader"]["id"])
-        self.roles["author"]["obj"] = self.bot.get_guild(
-            self.guild_id).get_role(self.roles["author"]["id"])
+        # self.roles["member"]["obj"] = self.bot.get_guild(
+        #     self.guild_id).get_role(self.roles["member"]["id"])
+        # self.roles["reader"]["obj"] = self.bot.get_guild(
+        #     self.guild_id).get_role(self.roles["reader"]["id"])
+        # self.roles["author"]["obj"] = self.bot.get_guild(
+        #     self.guild_id).get_role(self.roles["author"]["id"])
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def on_raw_reaction_add(self, payload):
         """
         Member agrees to the rules
         """
+        self.testLogger()
         await self.process_reaction(payload, True)
 
     @commands.Cog.listener("on_raw_reaction_remove")
@@ -62,7 +67,14 @@ class RoleManager(commands.Cog):
         """
         Member no longer agrees to the rules
         """
+        self.testLogger()
         await self.process_reaction(payload, False)
+
+    def testLogger(self):
+        logger.debug("Test debug message..")
+        # logger.debug("Test debug message.")
+        logger.debug(logger)
+        pass
 
     async def process_reaction(self, payload, add: bool):
         """
@@ -73,13 +85,49 @@ class RoleManager(commands.Cog):
         if member is None:
             return
 
-        emoji = str(payload.emoji)
+        reactionRoles = await self.getReactionRoles()
+        print(reactionRoles)
+        if not reactionRoles:  # if no role on reaction are left then we don't do anything
+            return
+
+        reactionRoles = filter(
+            lambda x: x["msg_id"] == payload.message_id, reactionRoles)
+        reactionRoles = filter(
+            lambda x: emoji.demojize(
+                x.emoji) == emoji.demojize(payload.emoji), reactionRoles
+        )
+
+        if not reactionRoles:  # if no role on reaction are left then we don't do anything
+            return
+
+        reactionRoleId = reactionRoles[0]["role_id"]
+        role = self.getRoleFromServer(reactionRoleId)
+        logger.debug(role)
 
         msg_id = payload.message_id
         if msg_id == self.msg_rule_agreement_id:
             await self.process_rule_agreement_reaction(member, emoji, add)
         elif msg_id == self.msg_author_id:
             await self.process_author_reaction(member, emoji, add)
+
+    # async def process_reaction(self, payload, add: bool):
+    #     """
+    #     Handles the processing of the reaction
+    #     """
+    #     member = self.bot.get_guild(self.guild_id).get_member(payload.user_id)
+
+    #     if member is None:
+    #         return
+
+    #     reactionRoles = self.getRoleOnReaction()
+
+    #     emoji = str(payload.emoji)
+
+    #     msg_id = payload.message_id
+    #     if msg_id == self.msg_rule_agreement_id:
+    #         await self.process_rule_agreement_reaction(member, emoji, add)
+    #     elif msg_id == self.msg_author_id:
+    #         await self.process_author_reaction(member, emoji, add)
 
     async def process_rule_agreement_reaction(self, member: discord.Member, emoji: str, add: bool):
         """
@@ -127,8 +175,100 @@ class RoleManager(commands.Cog):
             await self.log.send(warning(f"`{member.name}` tried to add a role but used the wrong emoji."))
 
     @commands.command(name="registerReactionRole")
-    async def registerRole(self, ctx):
+    async def registerRoleOnReactionInteractive(self, ctx):
+        """[summary]
 
+        Args:
+            ctx ([type]): [description]
+        """
+        # will handle interaction with the user
+        # ask: name of reaction?
+        # wait for name
+        # ask: for which message?
+        # wait for message_id
+        # ask: for which role?
+        # wait for role_id
+        # which emoji?
+        # wait for emoji
+        # fuzzy?
+        pass
+
+    # @commands.command(name="registerrole", aliases=['rra'])
+    # async def registerRoleOnReaction(self, ctx, name: str, channel_id: str, msg_id: str, role_id: str, emoji: str, fuzzy: bool = False):
+    #     """Registers a new entry for a Reaction-based Role Assignment
+    #     Args:
+    #         name (str): The name of this Reaction based role
+    #         channel_id (str): The channel where the message resides
+    #         msg_id (str): The message to monitor
+    #         role_id (str): The role to add
+    #         emoji (str): The emoji to look for
+    #         fuzzy (bool, optional): If this should match other emoji of this kind. Defaults to False.
+    #     """
+    #     if (not name or not msg_id or not role_id or not emoji):
+    #         return await ctx.channel.send(warning("Missing required parameter"))
+    #     # verify that the role and message actually exist
+    #     try:
+    #         await self.getRoleFromServer(role_id)
+    #     except:
+    #         return await ctx.channel.send(warning("Role Id was not valid"))
+    #     try:
+    #         await self.getMessageFromServer(channel_id, msg_id)
+    #     except:
+    #         return await ctx.channel.send(warning("Message Id was not valid"))
+    #     roleOnReaction = self.RoleOnReactionTemplate(
+    #         ctx, name, msg_id, role_id, emoji, fuzzy
+    #     )
+    #     self.storeRoleOnReaction(roleOnReaction)
+    #     pass
+    # @commands.command(name="test", aliases=['rra'])
+    # async def registerRoleOnReaction(self, ctx, name: str, channel_id: str, msg_id: str, role_id: str, emoji: str, fuzzy: bool = False):
+    #     """Registers a new entry for a Reaction-based Role Assignment
+    #     Args:
+    #         name (str): The name of this Reaction based role
+    #         channel_id (str): The channel where the message resides
+    #         msg_id (str): The message to monitor
+    #         role_id (str): The role to add
+    #         emoji (str): The emoji to look for
+    #         fuzzy (bool, optional): If this should match other emoji of this kind. Defaults to False.
+    #     """
+    #     roleOnReaction = self.RoleOnReactionTemplate(
+    #         ctx, 'name', 'msg_id', 'role_id', '👍', False
+    #     )
+    #     self.storeRoleOnReaction(roleOnReaction)
+    #     pass
+    @commands.command(name="test", aliases=['rra'])
+    async def registerRoleOnReaction(self, ctx):
+        """Registers a new entry for a Reaction-based Role Assignment
+
+        Args:
+            name (str): The name of this Reaction based role
+            channel_id (str): The channel where the message resides
+            msg_id (str): The message to monitor
+            role_id (str): The role to add
+            emoji (str): The emoji to look for
+            fuzzy (bool, optional): If this should match other emoji of this kind. Defaults to False.
+        """
+        # roleOnReaction = self.RoleOnReactionTemplate(
+        #     ctx, 'name', 'msg_id', 'role_id', '👍', False
+        # )
+        await self.storeRoleOnReaction({
+            "name": 'test',
+            "msg_id": '0',
+            "role_id": '0',
+            "emoji": '👍',
+            "fuzzy": False})
+        # self.storeRoleOnReaction(roleOnReaction)
+        pass
+
+    @commands.command(name="show")
+    async def show(self, ctx):
+        roles = await self.getReactionRoles()
+        print(roles)
+        await ctx.channel.send(roles)
+        pass
+
+    async def getMessageFromServer(self, channel_id: str, msg_id: str):
+        await self.self.get_guild().get_channel(channel_id).fetch_message(msg_id)
         pass
 
     async def getRoleFromServer(self, role_id: str) -> str:
@@ -141,9 +281,13 @@ class RoleManager(commands.Cog):
         Returns:
             json: A reference to the role
         """
-        return self.bot.get_guild(self.guild_id).get_role(role_id)
+        return self.get_guild().get_role(role_id)
 
-    async def getReactionRoles(self, ctx):
+    def getGuild(self):
+        logger.debug(f"guid_id: {self.guild_id}")
+        return self.bot.get_guild(self.guild_id)
+
+    async def getReactionRoles(self):
         """Gets the reaction roles from the database
 
         Args:
@@ -152,9 +296,13 @@ class RoleManager(commands.Cog):
         Returns:
             json: The reaction roles stored in the database
         """
-        return await self.db.guild(ctx.guild).reaction_roles()
+        guild = self.getGuild()
+        print(guild)
+        guildFromDb = self.db.guild(guild)
+        print(guildFromDb)
+        return await guildFromDb.reaction_roles()
 
-    async def storeReactionRoles(self, ctx, roles):
+    async def storeRoleOnReaction(self, role):
         """
         Stores the reaction roles in the database
 
@@ -162,18 +310,20 @@ class RoleManager(commands.Cog):
             ctx (obj): current context
             roles (json): A collection of reaction roles
         """
-        await self.db.guild(ctx.guild).reaction_roles.set(roles)
+        print('storing role', role)
+        await self.db.guild(self.getGuild()).reaction_roles.set(role)
         pass
 
-        def createNewReactionRole(self, name: str, msg_id: str, role_id: str, emoji: str, emoji_name: str = ''):
+        def RoleOnReactionTemplate(self, name: str, msg_id: str, role_id: str, emoji, fuzzy: bool = False):
             """Creates a new reaction role object
 
             Args:
                 name (str): The name of the this reaction role
+                channel_id (str): The id of the channel that the message resides in
                 msg_id (str): The id of the message that should be watched for reactions
                 role_id (str): The role to be given or removed
                 emoji (str): The triggering emoji
-                "emoji_name": The string name of the emoji [Optional]
+                fuzzy (bool): Whether this reaction can match others of it's kind
 
             Returns:
                 json: {
@@ -181,7 +331,7 @@ class RoleManager(commands.Cog):
                 "msg_id": str,
                 "role_id": str,
                 "emoji": str,
-                "emoji_name": str
+                fuzzy: boolean
             }
             """
             return {
@@ -189,5 +339,4 @@ class RoleManager(commands.Cog):
                 "msg_id": msg_id,
                 "role_id": role_id,
                 "emoji": emoji,
-                "emoji_name": emoji_name
-            }
+                "fuzzy": fuzzy}
